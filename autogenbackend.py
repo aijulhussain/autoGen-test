@@ -30,7 +30,7 @@ from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 
 
-def arxiv_search(query:str, max_result: int=10)->List[Dict]:
+def arxiv_search(query:str, max_results: int=5)->List[Dict]:
     """
         Return a compact list of arxic papers matching *query*.
         Each elemnt contains: ``title``,``authors``, ``published``, ``summary``, 
@@ -40,7 +40,7 @@ def arxiv_search(query:str, max_result: int=10)->List[Dict]:
     client = arxiv.Client()
     search = arxiv.Search(
         query=query,
-        max_results=max_result,
+        max_results=max_results,
         sort_by=arxiv.SortCriterion.Relevance,
         
     )
@@ -68,7 +68,7 @@ arxiv_tool = FunctionTool(
 )
 
 
-def build_team(model: str="llama3")->RoundRobinGroupChat:
+def build_team(model: str="llama3.2")->RoundRobinGroupChat:
     """ Create and return tow agent *RoundRobinGroupChat"""
 
     llm_client = OllamaChatCompletionClient(model=model)
@@ -110,3 +110,30 @@ def build_team(model: str="llama3")->RoundRobinGroupChat:
         participants=[search_agent, summarizer],
         max_turns=2,
     )
+
+# 3. Orchestrator
+
+async def run_litrev(
+    topic: str,
+    num_papers: int = 5,
+    model: str = "llama3.2",
+) -> AsyncGenerator[str, None]:
+    """Yield strings representing the conversation in real time."""
+
+    team = build_team(model=model)
+    task_prompt = (
+        f"Conduct a literature review on **{topic}** and return exactly {num_papers} papers."
+    )
+
+    async for msg in team.run_stream(task=task_prompt):
+        if isinstance(msg, TextMessage):
+            yield f"{msg.source}: {msg.content}"
+
+
+#cli testing
+if __name__=="__main__":
+    async def _demo()->None:
+        async for line in run_litrev("Grapg neural networks for chemistry", num_papers=5):
+            print(line)
+        
+    asyncio.run(_demo())

@@ -8,3 +8,4 @@ ollama
 tiktoken
 autogenstudio
 arxiv
+streamlit
