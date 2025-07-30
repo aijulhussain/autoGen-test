@@ -6,3 +6,4 @@ dotenv
 langchain_groq
 ollama
 tiktoken
+autogenstudio
