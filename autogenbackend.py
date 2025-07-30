@@ -6,7 +6,7 @@
     search_agent- crafts an arxiv query and fetches paper via the provided
                     arxiv_search tool
     
-    summarizer- writes a short markdown literature review from the selected paper
+    summarizer- writes a short markdown  abstruct from the selected paper
 
 
     the module is deliberately self contained so it can reused in CLI apps, streamlit, FastAPI, gradio, etc. 
@@ -57,3 +57,35 @@ def arxiv_search(query:str, max_result: int=10)->List[Dict]:
             }
         )
     return papers
+
+
+arxiv_tool = FunctionTool(
+    arxiv_search,
+    description=(
+        "Searches arxiv and returns up to *max_results* papers, each containg"
+        "title, authors, publication date, abstruct, and pdf_url."
+    ),
+)
+
+
+def build_team(model: str="llama3")->RoundRobinGroupChat:
+    """ Create and return tow agent *RoundRobinGroupChat"""
+
+    llm_client = OllamaChatCompletionClient(model=model)
+
+    #agent that only calls the arxiv tool and forwards top n papers
+
+    search_agent = AssistantAgent(
+        name = "search_agent",
+        description="Crafts arXiv queries retrieves candidate papers.",
+        system_message=(
+            "Given a user topic, think of the best arXiv query and call the "
+            "provided tool. Always fetch five times the papers requested so"
+            "that you can down-select the most relevent ones. When the tool "
+            "returns, choose exactly the number of papers requested and pass"
+            "them as concise JSON to the summarizer."
+        ),
+        tools=[arxiv_tool],
+        model_client=llm_client,
+        reflect_on_tool_use=True,
+    )
