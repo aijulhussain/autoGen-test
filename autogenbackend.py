@@ -89,3 +89,24 @@ def build_team(model: str="llama3")->RoundRobinGroupChat:
         model_client=llm_client,
         reflect_on_tool_use=True,
     )
+
+    # Agent that writes the final literature review
+    summarizer = AssistantAgent(
+        name="summarizer",
+        description="Produces a short Markdown review from provided papers.",
+        system_message=(
+            "You are an expert researcher. When you receive the JSON list of "
+            "papers, write a literature review style report in Markdown:\n"
+            "1. Start with a 2-3 sentence introduction of the topic.\n"
+            "2. Then include one bullet per paper with: title (as Markdown "
+            "link), authors, the specific problem tackled, and its key "
+            "contribution.\n"
+            "3. Close with a single-sentence takeaway."
+        ),
+        model_client=llm_client,
+    )
+
+    return RoundRobinGroupChat(
+        participants=[search_agent, summarizer],
+        max_turns=2,
+    )
